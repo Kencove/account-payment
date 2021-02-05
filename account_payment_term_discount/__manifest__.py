@@ -8,12 +8,15 @@
     "license": "AGPL-3",
     "category": "Accounting & Finance",
     "depends": ["purchase", "account"],
-    "website": "www.opensourceintegrators.com",
+    "author": "Open Source Integrators, Odoo Community Association (OCA)",
+    "website": "https://github.com/OCA/account-payment",
     "data": [
         "views/payment_term_view.xml",
         "views/account_payment_view.xml",
         "views/account_invoice_view.xml",
-        "views/product_view.xml"
+        "views/product_view.xml",
     ],
     "installable": True,
+    "development_status": "Beta",
+    "maintainers": ["hardik-osi"],
 }

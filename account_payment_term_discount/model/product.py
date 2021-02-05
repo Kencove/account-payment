@@ -5,9 +5,9 @@ from odoo import fields, models
 
 
 class ProductTemplate(models.Model):
-    _inherit = 'product.template'
+    _inherit = "product.template"
 
     is_exclude_shipping_amount = fields.Boolean(
-        string='Exclude Shippling Amount',
-        help="Check this box if want to exclude shipping charges from discount"
+        string="Exclude Shippling Amount",
+        help="Check this box if want to exclude shipping charges from discount",
     )

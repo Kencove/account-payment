@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 Open Source Integrators (http://www.opensourceintegrators.com)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 from dateutil.relativedelta import relativedelta
@@ -18,7 +17,8 @@ class AccountMove(models.Model):
     discount_date = fields.Date(
         "Discount Date",
         compute="_compute_discount_date",
-        help="Compute discount on the invoice based on the payment term discount percentage "
+        help="Compute discount on the invoice based on the payment term discount "
+        "percentage."
         "and the current date",
         store=True,
     )
@@ -52,29 +52,22 @@ class AccountMove(models.Model):
 
     @api.onchange("invoice_date", "invoice_payment_term_id")
     def _compute_discount_date(self):
-
         "This will retain a value based on invoice date and discount term"
         for invoice in self:
             disc_date = False
             for line in invoice.invoice_payment_term_id.line_ids:
-
                 if line.is_discount is True:
-
                     invoice_date = (
                         fields.Date.from_string(invoice.invoice_date)
                         or fields.Date.today()
                     )
                     disc_date = invoice_date + relativedelta(days=line.discount_days)
-
             # Empty disc date if pass today's date or discount already used
-
             if disc_date and (
-                disc_date <= fields.Date.today() or invoice.discount_taken != 0):
+                disc_date <= fields.Date.today() or invoice.discount_taken != 0
+            ):
                 disc_date = False
-
-            invoice.write({"discount_date" : disc_date})
-            print("invoice.discount_date", invoice.discount_date, invoice.discount_taken)
-
+            invoice.write({"discount_date": disc_date})
 
     @api.onchange("amount_residual", "invoice_payment_term_id", "invoice_date")
     def _compute_payment_disc(self):
