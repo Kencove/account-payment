@@ -15,10 +15,6 @@ Partial payments can be processed leaving invoice/bill open or writing off unpai
 
 Credits
 =======
-* Open Source Integrators
-
-Credits
-=======
 * Open Source Integrators <contact@opensourceintegrators.com>
 
 Contributors
@@ -28,4 +24,3 @@ Contributors
 * Mayank Gosai <mgosai@opensourceintegrators.com>
 * Sandip Mangukiya <smangukiya@opensourceintegrators.com>
 * Hardik Suthar <hsuthar@opensourceintegrators.com>
-

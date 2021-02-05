@@ -1,20 +1,18 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2019, Open Source Integrators
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
-
 import logging
 import math
-from odoo import api, fields, models, _
-from odoo.tools import float_round
+
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_round
 from odoo.tools.float_utils import float_compare
 
 try:
     from num2words import num2words
 except ImportError:
     logging.getLogger(__name__).warning(
-        "The num2words python library is not\
-     installed."
+        "The num2words python library is not installed."
     )
     num2words = None
 
@@ -41,7 +39,7 @@ class InvoiceCustomerPaymentLine(models.TransientModel):
     _rec_name = "invoice_id"
 
     @api.depends("receiving_amt")
-    def _get_payment_difference(self):
+    def _compute_payment_difference(self):
         for rec in self:
             rec.payment_difference = rec.balance_amt - rec.receiving_amt
 
@@ -55,7 +53,7 @@ class InvoiceCustomerPaymentLine(models.TransientModel):
     check_amount_in_words = fields.Char(string="Amount in Words")
     payment_method_id = fields.Many2one("account.payment.method", string="Payment Type")
     payment_difference = fields.Float(
-        compute="_get_payment_difference", string="Difference Amount"
+        compute="_compute_payment_difference", string="Difference Amount"
     )
     payment_difference_handling = fields.Selection(
         [("open", "Keep open"), ("reconcile", "Mark invoice as fully paid")],
@@ -114,7 +112,7 @@ class InvoicePaymentLine(models.TransientModel):
     _rec_name = "invoice_id"
 
     @api.depends("paying_amt")
-    def _get_payment_difference(self):
+    def _compute_payment_difference(self):
         for rec in self:
             rec.payment_difference = rec.balance_amt - rec.paying_amt
 
@@ -127,7 +125,7 @@ class InvoicePaymentLine(models.TransientModel):
     paying_amt = fields.Float("Pay Amount", required=True)
     check_amount_in_words = fields.Char(string="Amount in Words")
     payment_difference = fields.Float(
-        compute="_get_payment_difference", string="Difference Amount"
+        compute="_compute_payment_difference", string="Difference Amount"
     )
     payment_difference_handling = fields.Selection(
         [("open", "Keep open"), ("reconcile", "Mark invoice as fully paid")],
@@ -504,16 +502,20 @@ class AccountPaymentRegister(models.TransientModel):
                                     "payment_method_id": data_get.payment_method_id
                                     and data_get.payment_method_id.id
                                     or False,
-                                    "total_check_amount_in_words": total_check_amount_in_words,
+                                    "total_check_amount_in_words":
+                                        total_check_amount_in_words,
                                     "memo": memo,
                                     "temp_invoice": data_get.invoice_id.id,
                                     "inv_val": {
                                         str(data_get.invoice_id.id): {
                                             "line_name": name,
                                             "receiving_amt": data_get.receiving_amt,
-                                            "payment_difference_handling": data_get.payment_difference_handling,
-                                            "payment_difference": data_get.payment_difference,
-                                            "writeoff_account_id": data_get.writeoff_account_id
+                                            "payment_difference_handling":
+                                                data_get.payment_difference_handling,
+                                            "payment_difference":
+                                                data_get.payment_difference,
+                                            "writeoff_account_id":
+                                                data_get.writeoff_account_id
                                             and data_get.writeoff_account_id.id
                                             or False,
                                         }
@@ -581,7 +583,8 @@ class AccountPaymentRegister(models.TransientModel):
                                 "total": old_total + data_get.paying_amt,
                                 "memo": memo,
                                 "temp_invoice": data_get.invoice_id.id,
-                                "total_check_amount_in_words": total_check_amount_in_words,
+                                "total_check_amount_in_words":
+                                    total_check_amount_in_words,
                             }
                         )
                         # prepare name
@@ -598,7 +601,8 @@ class AccountPaymentRegister(models.TransientModel):
                                 str(data_get.invoice_id.id): {
                                     "line_name": name,
                                     "paying_amt": data_get.paying_amt,
-                                    "payment_difference_handling": data_get.payment_difference_handling,
+                                    "payment_difference_handling":
+                                        data_get.payment_difference_handling,
                                     "payment_difference": data_get.payment_difference,
                                     "writeoff_account_id": data_get.writeoff_account_id
                                     and data_get.writeoff_account_id.id
@@ -647,16 +651,20 @@ class AccountPaymentRegister(models.TransientModel):
                                         data_get.invoice_id.move_type
                                     ],
                                     "total": data_get.paying_amt,
-                                    "total_check_amount_in_words": total_check_amount_in_words,
+                                    "total_check_amount_in_words":
+                                        total_check_amount_in_words,
                                     "memo": memo,
                                     "temp_invoice": data_get.invoice_id.id,
                                     "inv_val": {
                                         str(data_get.invoice_id.id): {
                                             "line_name": name,
                                             "paying_amt": data_get.paying_amt,
-                                            "payment_difference_handling": data_get.payment_difference_handling,
-                                            "payment_difference": data_get.payment_difference,
-                                            "writeoff_account_id": data_get.writeoff_account_id
+                                            "payment_difference_handling":
+                                                data_get.payment_difference_handling,
+                                            "payment_difference":
+                                                data_get.payment_difference,
+                                            "writeoff_account_id":
+                                                data_get.writeoff_account_id
                                             and data_get.writeoff_account_id.id
                                             or False,
                                         }
