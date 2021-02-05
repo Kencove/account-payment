@@ -1,9 +1,9 @@
 # Copyright 2018 Open Source Integrators (http://www.opensourceintegrators.com)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 from dateutil.relativedelta import relativedelta
-from collections import defaultdict, MutableMapping, OrderedDict
+
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo import api, fields, models, _
 
 
 class AccountPaymentRegister(models.TransientModel):

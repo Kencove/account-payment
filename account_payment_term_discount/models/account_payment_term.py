@@ -4,8 +4,7 @@
 
 from dateutil.relativedelta import relativedelta
 
-from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models
 
 
 class AccountPaymentTerm(models.Model):
