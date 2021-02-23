@@ -54,21 +54,24 @@ class AccountPaymentRegister(models.TransientModel):
             total_debit = 0
             for inv in self._context.get("group_data")[p_id]["inv_val"]:
                 amt = 0
-                if "is_customer" in self._context and self._context.get("is_customer"):
+                if "is_customer" in self._context and \
+                        self._context.get("is_customer"):
                     amt = -(
                         self._context.get("group_data")[p_id]["inv_val"][inv][
                             "receiving_amt"
                         ]
                     )
                 else:
-                    amt = self._context.get("group_data")[p_id]["inv_val"][inv][
+                    amt = self._context.get("group_data")[p_id][
+                        "inv_val"][inv][
                         "paying_amt"
-                    ]
-                debit, credit, amount_currency, currency_id = aml_obj.with_context(
-                    date=self.payment_date
-                )._compute_amount_fields(
-                    amt, self.currency_id, self.company_id.currency_id
-                )
+                        ]
+                debit, credit, amount_currency, currency_id = \
+                    aml_obj.with_context(
+                        date=self.payment_date
+                        )._compute_amount_fields(
+                            amt, self.currency_id, self.company_id.currency_id
+                        )
                 # Write line corresponding to invoice payment
                 currunt_invoice = self.env["account.invoice"].browse(int(inv))
                 counterpart_aml_dict = self._get_shared_move_line_vals(
@@ -84,22 +87,25 @@ class AccountPaymentRegister(models.TransientModel):
                 # Customer invoices
                 if self._context.get("is_customer", False):
                     total_credit += credit
-                    payment_difference_handling = self._context.get("group_data")[p_id][
-                        "inv_val"
-                    ][inv]["payment_difference_handling"]
+                    payment_difference_handling = \
+                        self._context.get("group_data")[p_id][
+                            "inv_val"
+                            ][inv]["payment_difference_handling"]
                     payment_difference = self._context.get("group_data")[p_id][
                         "inv_val"
                     ][inv]["payment_difference"]
-                    writeoff_account_id = self._context.get("group_data")[p_id][
+                    writeoff_account_id = self._context.get("group_data")[
+                        p_id][
                         "inv_val"
-                    ][inv]["writeoff_account_id"]
+                        ][inv]["writeoff_account_id"]
                     if (
                         payment_difference_handling == "reconcile"
                         and payment_difference
                     ):
-                        name = self._context.get("group_data")[p_id]["inv_val"][inv][
+                        name = self._context.get("group_data")[
+                            p_id]["inv_val"][inv][
                             "line_name"
-                        ]
+                            ]
                         writeoff_line = self._get_shared_move_line_vals(
                             0, 0, 0, move.id, False
                         )
@@ -126,19 +132,22 @@ class AccountPaymentRegister(models.TransientModel):
                             counterpart_aml["debit"] += credit_wo - debit_wo
                         if counterpart_aml["credit"]:
                             counterpart_aml["credit"] += debit_wo - credit_wo
-                        counterpart_aml["amount_currency"] -= amount_currency_wo
+                        counterpart_aml[
+                            "amount_currency"] -= amount_currency_wo
                 # Vendor Bills
                 else:
                     total_debit += debit
-                    payment_difference_handling = self._context.get("group_data")[p_id][
-                        "inv_val"
-                    ][inv]["payment_difference_handling"]
+                    payment_difference_handling = \
+                        self._context.get("group_data")[p_id][
+                            "inv_val"
+                        ][inv]["payment_difference_handling"]
                     payment_difference = self._context.get("group_data")[p_id][
                         "inv_val"
                     ][inv]["payment_difference"]
-                    writeoff_account_id = self._context.get("group_data")[p_id][
-                        "inv_val"
-                    ][inv]["writeoff_account_id"]
+                    writeoff_account_id = \
+                        self._context.get("group_data")[p_id][
+                            "inv_val"
+                        ][inv]["writeoff_account_id"]
                     if (
                         payment_difference_handling == "reconcile"
                         and payment_difference > 0.0
@@ -158,7 +167,8 @@ class AccountPaymentRegister(models.TransientModel):
                             self.currency_id,
                             self.company_id.currency_id,
                         )
-                        name = self._context.get("group_data")[p_id]["inv_val"][inv][
+                        name = self._context.get("group_data")[
+                            p_id]["inv_val"][inv][
                             "line_name"
                         ]
                         writeoff_line["name"] = name
@@ -172,7 +182,8 @@ class AccountPaymentRegister(models.TransientModel):
                             counterpart_aml["debit"] += credit_wo - debit_wo
                         if counterpart_aml["credit"]:
                             counterpart_aml["credit"] += debit_wo - credit_wo
-                        counterpart_aml["amount_currency"] -= amount_currency_wo
+                        counterpart_aml[
+                            "amount_currency"] -= amount_currency_wo
                 currunt_invoice.register_payment(counterpart_aml)
             # Write counterpart lines
             if not self.currency_id != self.company_id.currency_id:
@@ -181,7 +192,8 @@ class AccountPaymentRegister(models.TransientModel):
                 total_credit, total_debit, -amount_currency, move.id, False
             )
             liquidity_aml_dict.update(
-                self._get_liquidity_move_line_vals(-max(total_credit, total_debit))
+                self._get_liquidity_move_line_vals(-max(
+                    total_credit, total_debit))
             )
             aml_obj.create(liquidity_aml_dict)
 
@@ -197,7 +209,8 @@ class AccountPaymentRegister(models.TransientModel):
 
     @api.depends("invoice_payments.paying_amt")
     def _compute_pay_total(self):
-        self.total_pay_amount = sum(line.paying_amt for line in self.invoice_payments)
+        self.total_pay_amount = sum(
+            line.paying_amt for line in self.invoice_payments)
 
     is_auto_fill = fields.Char(string="Auto-Fill Pay Amount")
     invoice_payments = fields.One2many(
@@ -214,7 +227,8 @@ class AccountPaymentRegister(models.TransientModel):
         store=True,
         readonly=False,
     )
-    total_pay_amount = fields.Float("Total Invoices:", compute="_compute_pay_total")
+    total_pay_amount = fields.Float(
+        "Total Invoices:", compute="_compute_pay_total")
     total_customer_pay_amount = fields.Float(
         "Total Customer Invoices:", compute="_compute_customer_pay_total"
     )
@@ -252,10 +266,15 @@ class AccountPaymentRegister(models.TransientModel):
             for invoice in invoices
         ):
             raise UserError(
-                _("You can only register payments for Not Paid or partial invoices")
+                _(
+                    "You can only register payments \
+                    for Not Paid or partial invoices"
+                )
             )
 
-        if any(inv.payment_mode_id != invoices[0].payment_mode_id for inv in invoices):
+        if any(
+                inv.payment_mode_id != invoices[0].payment_mode_id
+                for inv in invoices):
             raise UserError(
                 _(
                     "You can only register payments for \
@@ -284,7 +303,8 @@ class AccountPaymentRegister(models.TransientModel):
 
         if "batch" in context and context.get("batch"):
             payment_lines = []
-            if MAP_INVOICE_TYPE_PARTNER_TYPE[invoices[0].move_type] == "customer":
+            if MAP_INVOICE_TYPE_PARTNER_TYPE[
+                    invoices[0].move_type] == "customer":
                 for inv in invoices:
                     payment_lines.append(
                         (
@@ -295,14 +315,19 @@ class AccountPaymentRegister(models.TransientModel):
                                 "invoice_id": inv.id,
                                 "balance_amt": inv.amount_residual or 0.0,
                                 "receiving_amt": 0.0,
-                                "payment_difference": inv.amount_residual or 0.0,
+                                "payment_difference":
+                                inv.amount_residual or 0.0,
                                 "payment_difference_handling": "open",
-                                "writeoff_account_id" : inv.invoice_payment_term_id.line_ids[0].discount_income_account_id.id,
+                                "writeoff_account_id":
+                                inv.invoice_payment_term_id.line_ids[
+                                    0
+                                ].discount_income_account_id.id,
                             },
                         )
                     )
                 rec.update(
-                    {"invoice_customer_payments": payment_lines, "is_customer": True}
+                    {"invoice_customer_payments": payment_lines,
+                        "is_customer": True}
                 )
             else:
                 for inv in invoices:
@@ -315,12 +340,15 @@ class AccountPaymentRegister(models.TransientModel):
                                 "invoice_id": inv.id,
                                 "balance_amt": inv.amount_residual or 0.0,
                                 "paying_amt": 0.0,
-                                "writeoff_account_id" : inv.invoice_payment_term_id.line_ids[0].discount_expense_account_id.id,
-
+                                "writeoff_account_id":
+                                inv.invoice_payment_term_id.line_ids[
+                                    0
+                                ].discount_expense_account_id.id,
                             },
                         )
                     )
-                rec.update({"invoice_payments": payment_lines, "is_customer": False})
+                rec.update({"invoice_payments": payment_lines,
+                            "is_customer": False})
         else:
             # Checks on received invoice records
             if any(
@@ -345,7 +373,8 @@ class AccountPaymentRegister(models.TransientModel):
                 "currency_id": invoices[0].currency_id.id,
                 "payment_type": total_amount > 0 and "inbound" or "outbound",
                 "partner_id": invoices[0].commercial_partner_id.id,
-                "partner_type": MAP_INVOICE_TYPE_PARTNER_TYPE[invoices[0].move_type],
+                "partner_type":
+                MAP_INVOICE_TYPE_PARTNER_TYPE[invoices[0].move_type],
                 "company_id": self.env.user.company_id,
             }
         )
@@ -387,7 +416,8 @@ class AccountPaymentRegister(models.TransientModel):
         if self.is_customer:
             context.update({"is_customer": True})
             if (
-                float_compare(self.total_customer_pay_amount, self.cheque_amount, 2)
+                float_compare(
+                    self.total_customer_pay_amount, self.cheque_amount, 2)
                 != 0
             ):
                 raise ValidationError(
@@ -402,7 +432,8 @@ class AccountPaymentRegister(models.TransientModel):
                         data_get.balance_amt - data_get.receiving_amt
                     )
                     if data_get.payment_difference_handling:
-                        data_get.invoice_id.discount_taken = data_get.payment_difference
+                        data_get.invoice_id.discount_taken = \
+                            data_get.payment_difference
                     partner_id = str(data_get.invoice_id.partner_id.id)
                     if partner_id in group_data:
                         old_total = group_data[partner_id]["total"]
@@ -427,15 +458,17 @@ class AccountPaymentRegister(models.TransientModel):
                         ).title()
                         decimals = (old_total + data_get.receiving_amt) % 1
                         if decimals >= 10 ** -2:
-                            total_check_amount_in_words += _(" and %s/100") % str(
-                                int(
-                                    round(
-                                        float_round(
-                                            decimals * 100, precision_rounding=1
+                            total_check_amount_in_words += \
+                                _(" and %s/100") % str(
+                                    int(
+                                        round(
+                                            float_round(
+                                                decimals * 100,
+                                                precision_rounding=1
+                                            )
                                         )
                                     )
                                 )
-                            )
                         # prepare name
                         name = ""
                         if data_get.reason_code:
@@ -456,7 +489,8 @@ class AccountPaymentRegister(models.TransientModel):
                                 "payment_method_id": data_get.payment_method_id
                                 and data_get.payment_method_id.id
                                 or False,
-                                "total_check_amount_in_words": total_check_amount_in_words,
+                                "total_check_amount_in_words":
+                                total_check_amount_in_words,
                             }
                         )
                         group_data[partner_id]["inv_val"].update(
@@ -464,9 +498,12 @@ class AccountPaymentRegister(models.TransientModel):
                                 str(data_get.invoice_id.id): {
                                     "line_name": name,
                                     "receiving_amt": data_get.receiving_amt,
-                                    "payment_difference_handling": data_get.payment_difference_handling,
-                                    "payment_difference": data_get.payment_difference,
-                                    "writeoff_account_id": data_get.writeoff_account_id
+                                    "payment_difference_handling":
+                                    data_get.payment_difference_handling,
+                                    "payment_difference":
+                                    data_get.payment_difference,
+                                    "writeoff_account_id":
+                                    data_get.writeoff_account_id
                                     and data_get.writeoff_account_id.id
                                     or False,
                                 }
@@ -476,7 +513,8 @@ class AccountPaymentRegister(models.TransientModel):
                         # build memo value
                         if self.communication:
                             memo = (
-                                self.communication + "-" + str(data_get.invoice_id.name)
+                                self.communication + "-" +
+                                str(data_get.invoice_id.name)
                             )
                         else:
                             memo = str(data_get.invoice_id.name)
@@ -486,15 +524,17 @@ class AccountPaymentRegister(models.TransientModel):
                         ).title()
                         decimals = data_get.receiving_amt % 1
                         if decimals >= 10 ** -2:
-                            total_check_amount_in_words += _(" and %s/100") % str(
-                                int(
-                                    round(
-                                        float_round(
-                                            decimals * 100, precision_rounding=1
+                            total_check_amount_in_words += \
+                                _(" and %s/100") % str(
+                                    int(
+                                        round(
+                                            float_round(
+                                                decimals * 100,
+                                                precision_rounding=1
+                                            )
                                         )
                                     )
                                 )
-                            )
                         # prepare name
                         name = ""
                         if data_get.reason_code:
@@ -507,23 +547,31 @@ class AccountPaymentRegister(models.TransientModel):
                             {
                                 partner_id: {
                                     "partner_id": partner_id,
-                                    "partner_type": MAP_INVOICE_TYPE_PARTNER_TYPE[
+                                    "partner_type":
+                                    MAP_INVOICE_TYPE_PARTNER_TYPE[
                                         data_get.invoice_id.move_type
                                     ],
                                     "total": data_get.receiving_amt,
-                                    "payment_method_id": data_get.payment_method_id
+                                    "payment_method_id":
+                                    data_get.payment_method_id
                                     and data_get.payment_method_id.id
                                     or False,
-                                    "total_check_amount_in_words": total_check_amount_in_words,
+                                    "total_check_amount_in_words":
+                                    total_check_amount_in_words,
                                     "memo": memo,
                                     "temp_invoice": data_get.invoice_id.id,
                                     "inv_val": {
                                         str(data_get.invoice_id.id): {
                                             "line_name": name,
-                                            "receiving_amt": data_get.receiving_amt,
-                                            "payment_difference_handling": data_get.payment_difference_handling,
-                                            "payment_difference": data_get.payment_difference,
-                                            "writeoff_account_id": data_get.writeoff_account_id
+                                            "receiving_amt":
+                                            data_get.receiving_amt,
+                                            "payment_difference_handling":
+                                            data_get.
+                                            payment_difference_handling,
+                                            "payment_difference":
+                                            data_get.payment_difference,
+                                            "writeoff_account_id":
+                                            data_get.writeoff_account_id
                                             and data_get.writeoff_account_id.id
                                             or False,
                                         }
@@ -533,7 +581,8 @@ class AccountPaymentRegister(models.TransientModel):
                         )
         else:
             context.update({"is_customer": False})
-            if float_compare(self.total_pay_amount, self.cheque_amount, 2) != 0:
+            if float_compare(
+                    self.total_pay_amount, self.cheque_amount, 2) != 0:
                 raise ValidationError(
                     _(
                         "Verification Failed! Total Invoices\
@@ -547,7 +596,8 @@ class AccountPaymentRegister(models.TransientModel):
                         data_get.balance_amt - data_get.paying_amt
                     )
                     if data_get.payment_difference_handling:
-                        data_get.invoice_id.discount_taken = data_get.payment_difference
+                        data_get.invoice_id.discount_taken = \
+                            data_get.payment_difference
                     partner_id = str(data_get.invoice_id.partner_id.id)
                     if partner_id in group_data:
                         old_total = group_data[partner_id]["total"]
@@ -573,15 +623,17 @@ class AccountPaymentRegister(models.TransientModel):
                         decimals = (old_total + data_get.paying_amt) % 1
 
                         if decimals >= 10 ** -2:
-                            total_check_amount_in_words += _(" and %s/100") % str(
-                                int(
-                                    round(
-                                        float_round(
-                                            decimals * 100, precision_rounding=1
+                            total_check_amount_in_words += \
+                                _(" and %s/100") % str(
+                                    int(
+                                        round(
+                                            float_round(
+                                                decimals * 100,
+                                                precision_rounding=1
+                                            )
                                         )
                                     )
                                 )
-                            )
                         group_data[partner_id].update(
                             {
                                 "partner_id": partner_id,
@@ -591,7 +643,8 @@ class AccountPaymentRegister(models.TransientModel):
                                 "total": old_total + data_get.paying_amt,
                                 "memo": memo,
                                 "temp_invoice": data_get.invoice_id.id,
-                                "total_check_amount_in_words": total_check_amount_in_words,
+                                "total_check_amount_in_words":
+                                total_check_amount_in_words,
                             }
                         )
                         # prepare name
@@ -608,9 +661,13 @@ class AccountPaymentRegister(models.TransientModel):
                                 str(data_get.invoice_id.id): {
                                     "line_name": name,
                                     "paying_amt": data_get.paying_amt,
-                                    "payment_difference_handling": data_get.payment_difference_handling,
-                                    "payment_difference": data_get.payment_difference,
-                                    "writeoff_account_id": data_get.writeoff_account_id
+                                    "payment_difference_handling":
+                                    data_get.
+                                    payment_difference_handling,
+                                    "payment_difference":
+                                    data_get.payment_difference,
+                                    "writeoff_account_id":
+                                    data_get.writeoff_account_id
                                     and data_get.writeoff_account_id.id
                                     or False,
                                 }
@@ -640,33 +697,41 @@ class AccountPaymentRegister(models.TransientModel):
                         if not name:
                             name = "Counterpart"
                         if decimals >= 10 ** -2:
-                            total_check_amount_in_words += _(" and %s/100") % str(
-                                int(
-                                    round(
-                                        float_round(
-                                            decimals * 100, precision_rounding=1
+                            total_check_amount_in_words += \
+                                _(" and %s/100") % str(
+                                    int(
+                                        round(
+                                            float_round(
+                                                decimals * 100,
+                                                precision_rounding=1
+                                            )
                                         )
                                     )
                                 )
-                            )
                         group_data.update(
                             {
                                 partner_id: {
                                     "partner_id": partner_id,
-                                    "partner_type": MAP_INVOICE_TYPE_PARTNER_TYPE[
+                                    "partner_type":
+                                    MAP_INVOICE_TYPE_PARTNER_TYPE[
                                         data_get.invoice_id.move_type
                                     ],
                                     "total": data_get.paying_amt,
-                                    "total_check_amount_in_words": total_check_amount_in_words,
+                                    "total_check_amount_in_words":
+                                    total_check_amount_in_words,
                                     "memo": memo,
                                     "temp_invoice": data_get.invoice_id.id,
                                     "inv_val": {
                                         str(data_get.invoice_id.id): {
                                             "line_name": name,
                                             "paying_amt": data_get.paying_amt,
-                                            "payment_difference_handling": data_get.payment_difference_handling,
-                                            "payment_difference": data_get.payment_difference,
-                                            "writeoff_account_id": data_get.writeoff_account_id
+                                            "payment_difference_handling":
+                                            data_get.
+                                            payment_difference_handling,
+                                            "payment_difference":
+                                            data_get.payment_difference,
+                                            "writeoff_account_id":
+                                            data_get.writeoff_account_id
                                             and data_get.writeoff_account_id.id
                                             or False,
                                         }
@@ -722,7 +787,8 @@ class AccountPaymentRegister(models.TransientModel):
                         if remaining_amt < 0.0:
                             break
                         amount = sum(
-                            line.balance_amt for line in self.invoice_customer_payments
+                            line.balance_amt
+                            for line in self.invoice_customer_payments
                         )
                         count += 1
                         if count <= len(wiz.invoice_customer_payments):
@@ -772,7 +838,8 @@ class AccountPaymentRegister(models.TransientModel):
                     for payline in wiz.invoice_payments:
                         if remaining_amt < 0.0:
                             break
-                        amount = sum(line.balance_amt for line in self.invoice_payments)
+                        amount = sum(
+                            line.balance_amt for line in self.invoice_payments)
                         count += 1
                         if count <= len(wiz.invoice_payments):
                             payline.write(
