@@ -608,7 +608,7 @@ class AccountPaymentRegister(models.TransientModel):
                                 + " : "
                                 + self.communication
                                 + "-"
-                                + str(data_get.invoice_id.number)
+                                + str(data_get.invoice_id.name)
                             )
                         else:
                             memo = (
@@ -679,7 +679,7 @@ class AccountPaymentRegister(models.TransientModel):
                             memo = (
                                 self.communication
                                 + "-"
-                                + str(data_get.invoice_id.number)
+                                + str(data_get.invoice_id.name)
                             )
                         else:
                             memo = str(data_get.invoice_id.name)
