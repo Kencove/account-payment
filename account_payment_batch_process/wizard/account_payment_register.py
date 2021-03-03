@@ -616,7 +616,7 @@ class AccountPaymentRegister(models.TransientModel):
                                 + " : "
                                 + str(data_get.invoice_id.name)
                             )
-                        #                        # calculate amount in words
+                        # Calculate amount in words
                         total_check_amount_in_words = num2words(
                             math.floor(old_total + data_get.paying_amt)
                         ).title()
@@ -743,21 +743,33 @@ class AccountPaymentRegister(models.TransientModel):
         context.update({"group_data": group_data})
         # making partner wise payment
         payment_ids = []
-        for p in list(group_data):
+        for partner in list(group_data):
             # update active_ids with active invoice id
-            if context.get("active_ids", False) and group_data[p].get(
+            if context.get("active_ids", False) and group_data[partner].get(
                 "temp_invoice", False
             ):
-                context.update({"active_ids": group_data[p]["temp_invoice"]})
-            self.get_payment_batch_vals(group_data=group_data[p])
+                context.update({"active_ids": group_data[partner]["temp_invoice"]})
+            self.get_payment_batch_vals(group_data=group_data[partner])
 
             payment = (
                 self.env["account.payment"]
                 .with_context(context)
-                .create(self.get_payment_batch_vals(group_data=group_data[p]))
+                .create(self.get_payment_batch_vals(group_data=group_data[partner]))
             )
             payment_ids.append(payment.id)
             payment.action_post()
+
+            # Reconciliation
+            domain = [('account_internal_type', 'in', ('receivable', 'payable')),
+                      ('reconciled', '=', False)]
+            payment_lines = payment.line_ids.filtered_domain(domain)
+            invoices = self.env["account.move"].browse(context.get("active_ids", False))
+            lines = invoices.invoice_line_ids.filtered_domain(domain)
+            for account in payment_lines.account_id:
+                (payment_lines + lines) \
+                    .filtered_domain(
+                    [('account_id', '=', account.id), ('reconciled', '=', False)]) \
+                    .reconcile()
 
         view_id = self.env["ir.model.data"].get_object_reference(
             "account_payment_batch_process",
