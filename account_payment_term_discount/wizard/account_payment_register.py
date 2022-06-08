@@ -24,7 +24,7 @@ class AccountPaymentRegister(models.TransientModel):
             res.update({"invoice_id": record.id, "discount_amt": record.discount_amt})
         return res
 
-    @api.onchange("amount", "payment_difference", "payment_date")
+    @api.onchange("amount", "payment_difference", "payment_date", "currency_id")
     def onchange_payment_amount(self):
         if (
             self.invoice_id
@@ -48,7 +48,20 @@ class AccountPaymentRegister(models.TransientModel):
                     self.invoice_id.discount_amt,
                     precision_rounding=self.currency_id.rounding,
                 )
-
+                amount_residual = self.invoice_id.amount_residual
+                if self.invoice_id.currency_id.id != self.currency_id.id:
+                    discount_amt = self.invoice_id.currency_id._convert(
+                        discount_amt,
+                        self.currency_id,
+                        company=self.invoice_id.company_id,
+                        date=payment_date,
+                    )
+                    amount_residual = self.invoice_id.currency_id._convert(
+                        amount_residual,
+                        self.currency_id,
+                        company=self.invoice_id.company_id,
+                        date=payment_date,
+                    )
                 payment_difference = self.payment_difference
                 self.payment_difference = 0.0
 
@@ -89,7 +102,7 @@ class AccountPaymentRegister(models.TransientModel):
                 else:
                     self.payment_difference = payment_difference
 
-                self.amount = self.invoice_id.amount_residual - (
+                self.amount = amount_residual - (
                     self.payment_difference
                 )
 
