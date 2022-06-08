@@ -48,6 +48,7 @@ class AccountPaymentRegister(models.TransientModel):
                     self.invoice_id.discount_amt,
                     precision_rounding=self.currency_id.rounding,
                 )
+
                 amount_residual = self.invoice_id.amount_residual
                 if self.invoice_id.currency_id.id != self.currency_id.id:
                     discount_amt = self.invoice_id.currency_id._convert(
