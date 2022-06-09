@@ -103,9 +103,7 @@ class AccountPaymentRegister(models.TransientModel):
                 else:
                     self.payment_difference = payment_difference
 
-                self.amount = amount_residual - (
-                    self.payment_difference
-                )
+                self.amount = amount_residual - abs(self.payment_difference)
 
     def action_create_payments(self):
         active_id = self.env.context.get("active_ids", [])
