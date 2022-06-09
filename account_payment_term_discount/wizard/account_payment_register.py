@@ -94,7 +94,7 @@ class AccountPaymentRegister(models.TransientModel):
                         self.payment_difference_handling = "open"
                         self.writeoff_label = False
                     # customer paying more than discount_amt
-                    elif payment_difference == discount_amt and discount_amt > 0:
+                    elif abs(payment_difference) == discount_amt and discount_amt > 0:
 
                         self.payment_difference = abs(payment_difference)
                         self.payment_difference_handling = "reconcile"
