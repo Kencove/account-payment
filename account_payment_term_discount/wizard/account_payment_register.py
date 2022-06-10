@@ -24,7 +24,7 @@ class AccountPaymentRegister(models.TransientModel):
             res.update({"invoice_id": record.id, "discount_amt": record.discount_amt})
         return res
 
-    @api.onchange("amount", "payment_difference", "payment_date")
+    @api.onchange("amount", "payment_difference", "payment_date", "currency_id")
     def onchange_payment_amount(self):
         if (
             self.invoice_id
@@ -49,6 +49,20 @@ class AccountPaymentRegister(models.TransientModel):
                     precision_rounding=self.currency_id.rounding,
                 )
 
+                amount_residual = self.invoice_id.amount_residual
+                if self.invoice_id.currency_id.id != self.currency_id.id:
+                    discount_amt = self.invoice_id.currency_id._convert(
+                        discount_amt,
+                        self.currency_id,
+                        company=self.invoice_id.company_id,
+                        date=self.invoice_id.date,
+                    )
+                    amount_residual = self.invoice_id.currency_id._convert(
+                        amount_residual,
+                        self.currency_id,
+                        company=self.invoice_id.company_id,
+                        date=self.invoice_id.date,
+                    )
                 payment_difference = self.payment_difference
                 self.payment_difference = 0.0
 
@@ -66,7 +80,7 @@ class AccountPaymentRegister(models.TransientModel):
                         self.writeoff_account_id = discount_account.id
                         self.writeoff_label = "Payment Discount"
                     # customer is paying more
-                    elif payment_difference < discount_amt:
+                    elif abs(payment_difference) < discount_amt:
                         if payment_difference > 0:
                             self.payment_difference = discount_amt
                             self.payment_difference_handling = "reconcile"
@@ -75,12 +89,12 @@ class AccountPaymentRegister(models.TransientModel):
                         elif payment_difference < 0:
                             self.payment_difference = payment_difference
                     # ocustomer paying more than discount_amt
-                    elif payment_difference > discount_amt:
+                    elif abs(payment_difference) > discount_amt:
                         self.payment_difference = payment_difference
                         self.payment_difference_handling = "open"
                         self.writeoff_label = False
                     # customer paying more than discount_amt
-                    elif payment_difference == discount_amt and discount_amt > 0:
+                    elif abs(payment_difference) == discount_amt and discount_amt > 0:
 
                         self.payment_difference = abs(payment_difference)
                         self.payment_difference_handling = "reconcile"
@@ -89,9 +103,7 @@ class AccountPaymentRegister(models.TransientModel):
                 else:
                     self.payment_difference = payment_difference
 
-                self.amount = self.invoice_id.amount_residual - (
-                    self.payment_difference
-                )
+                self.amount = amount_residual - abs(self.payment_difference)
 
     def action_create_payments(self):
         active_id = self.env.context.get("active_ids", [])
