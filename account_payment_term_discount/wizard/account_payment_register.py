@@ -55,13 +55,13 @@ class AccountPaymentRegister(models.TransientModel):
                         discount_amt,
                         self.currency_id,
                         company=self.invoice_id.company_id,
-                        date=payment_date,
+                        date=self.invoice_id.date,
                     )
                     amount_residual = self.invoice_id.currency_id._convert(
                         amount_residual,
                         self.currency_id,
                         company=self.invoice_id.company_id,
-                        date=payment_date,
+                        date=self.invoice_id.date,
                     )
                 payment_difference = self.payment_difference
                 self.payment_difference = 0.0
