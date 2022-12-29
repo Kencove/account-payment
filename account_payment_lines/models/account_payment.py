@@ -135,6 +135,10 @@ class AccountPayment(models.Model):
                     "account_id": line.account_id.id,
                     "payment_id": self.id,
                     "payment_line_id": line.id,
+                    "analytic_account_id": line.analytic_account_id.id,
+                    "analytic_tag_ids": line.analytic_tag_ids
+                    and [(6, 0, line.analytic_tag_ids.ids)]
+                    or [],
                 }
             )
         if len(res) >= 2:
@@ -171,12 +175,26 @@ class AccountPaymentCounterLines(models.Model):
     payment_id = fields.Many2one(
         "account.payment", string="Payment", required=False, ondelete="cascade"
     )
+    company_id = fields.Many2one(related="payment_id.company_id")
     name = fields.Char(string="Description", required=True, default="/")
     account_id = fields.Many2one(
         "account.account",
         string="Account",
         required=True,
         ondelete="restrict",
+        check_company=True,
+    )
+    analytic_account_id = fields.Many2one(
+        comodel_name="account.analytic.account",
+        string="Analytic Account",
+        ondelete="restrict",
+        check_company=True,
+    )
+    analytic_tag_ids = fields.Many2many(
+        "account.analytic.tag",
+        string="Analytic Tags",
+        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        check_company=True,
     )
     currency_id = fields.Many2one(
         comodel_name="res.currency", string="Currency", related="payment_id.currency_id"
@@ -265,6 +283,6 @@ class AccountPaymentCounterLines(models.Model):
                 raise ValidationError(
                     _(
                         "the amount exceeds the residual amount, please check the invoice %s"
-                    )
-                    % (rec.aml_id.move_id.name or rec.aml_id.name)
+                    ),
+                    (rec.aml_id.move_id.name or rec.aml_id.name),
                 )
