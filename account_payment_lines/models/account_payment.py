@@ -34,12 +34,43 @@ class AccountPayment(models.Model):
                         to_reconcile.reconcile()
         return True
 
+    def _get_moves_domain(self):
+        domain = [
+            ("amount_residual", "!=", 0.0),
+            ("state", "=", "posted"),
+            ("company_id", "=", self.company_id.id),
+            (
+                "commercial_partner_id",
+                "=",
+                self.partner_id.commercial_partner_id.id,
+            ),
+        ]
+        if self.partner_type == "supplier":
+            if self.payment_type == "outbound":
+                domain.append(("move_type", "in", ("in_invoice", "in_receipt")))
+            if self.payment_type == "inbound":
+                domain.append(("move_type", "=", "in_refund"))
+        elif self.partner_type == "customer":
+            if self.payment_type == "outbound":
+                domain.append(("move_type", "=", "out_refund"))
+            if self.payment_type == "inbound":
+                domain.append(("move_type", "in", ("out_invoice", "out_receipt")))
+        return domain
+
+    def _filter_amls(self, amls):
+        return amls.filtered(
+            lambda x: x.partner_id.commercial_partner_id.id
+            == self.partner_id.commercial_partner_id.id
+            and x.amount_residual != 0
+        )
+
     @api.onchange(
         "payment_type",
         "partner_type",
         "partner_id",
         "amount",
         "currency_id",
+        "date",
     )
     def _onchange_info_lines(self):
         self.ensure_one()
@@ -51,37 +82,14 @@ class AccountPayment(models.Model):
             for rec in self:
                 if not rec.partner_id:
                     continue
-                domain = [
-                    ("amount_residual", "!=", 0.0),
-                    ("state", "=", "posted"),
-                    ("company_id", "=", rec.company_id.id),
-                    (
-                        "commercial_partner_id",
-                        "=",
-                        rec.partner_id.commercial_partner_id.id,
-                    ),
-                ]
-                if rec.partner_type == "supplier":
-                    if rec.payment_type == "outbound":
-                        domain.append(("move_type", "=", "in_invoice"))
-                    if rec.payment_type == "inbound":
-                        domain.append(("move_type", "=", "in_refund"))
-                elif rec.partner_type == "customer":
-                    if rec.payment_type == "outbound":
-                        domain.append(("move_type", "=", "out_refund"))
-                    if rec.payment_type == "inbound":
-                        domain.append(("move_type", "=", "out_invoice"))
+                domain = self._get_moves_domain()
                 pending_invoices = move_model.search(
                     domain, order="invoice_date_due ASC"
                 )
                 pending_amount = rec.amount
                 lines_data = line_model.browse()
                 for invoice in pending_invoices:
-                    for aml in invoice.line_ids.filtered(
-                        lambda x: x.partner_id.commercial_partner_id.id
-                        == rec.partner_id.commercial_partner_id.id
-                        and x.amount_residual != 0
-                    ):
+                    for aml in self._filter_amls(invoice.line_ids):
                         amount_to_apply = 0
                         if pending_amount >= 0:
                             amount_to_apply = min(
@@ -124,15 +132,28 @@ class AccountPayment(models.Model):
             line_balance = (
                 line.amount if self.payment_type == "outbound" else line.amount * -1
             )
-            aml_value = line_balance + write_off_balance
+            line_balance_currency = (
+                line.amount_currency
+                if self.payment_type == "outbound"
+                else line.amount_currency * -1
+            )
+            same_currency = line.payment_id.currency_id.id == (
+                line.aml_id.move_id.currency_id.id or line.move_id.currency_id.id
+            ) or (not line.aml_id and not line.move_id)
+            aml_value = line_balance_currency + write_off_balance
+            aml_value_currency = line_balance + write_off_amount_currency
             new_aml_lines.append(
                 {
                     "name": line.display_name,
                     "debit": aml_value > 0.0 and aml_value or 0.0,
                     "credit": aml_value < 0.0 and -aml_value or 0.0,
+                    "amount_currency": not same_currency
+                    and aml_value
+                    or aml_value_currency,
                     "date_maturity": self.date,
                     "partner_id": line.partner_id.commercial_partner_id.id,
                     "account_id": line.account_id.id,
+                    "currency_id": line.payment_id.currency_id.id,
                     "payment_id": self.id,
                     "payment_line_id": line.id,
                     "analytic_account_id": line.analytic_account_id.id,
@@ -200,22 +221,48 @@ class AccountPaymentCounterLines(models.Model):
         comodel_name="res.currency", string="Currency", related="payment_id.currency_id"
     )
     amount = fields.Monetary(string="Amount", required=True)
+    amount_currency = fields.Monetary(
+        string="Amount in Company Currency", compute="_compute_amounts"
+    )
     aml_amount_residual = fields.Monetary(
         string="Amount Residual",
-        compute="_compute_residual_amounts",
+        compute="_compute_amounts",
     )
     residual_after_payment = fields.Monetary(
-        compute="_compute_residual_amounts",
+        compute="_compute_amounts",
+    )
+    aml_amount_residual_currency = fields.Monetary(
+        string="Amount Residual Currency",
+        compute="_compute_amounts",
+    )
+    residual_after_payment_currency = fields.Monetary(
+        compute="_compute_amounts",
     )
 
     @api.depends(
-        "aml_id.amount_residual",
-        "amount",
+        "aml_id.amount_residual", "amount", "payment_id.currency_id", "payment_id.date"
     )
-    def _compute_residual_amounts(self):
+    def _compute_amounts(self):
         for rec in self:
+            rec.amount_currency = rec.payment_id.currency_id._convert(
+                rec.amount,
+                rec.payment_id.company_id.currency_id,
+                rec.payment_id.company_id,
+                date=rec.payment_id.date,
+            )
             rec.aml_amount_residual = rec.aml_id.amount_residual
-            rec.residual_after_payment = abs(rec.aml_id.amount_residual) - rec.amount
+            rec.residual_after_payment = (
+                abs(rec.aml_id.amount_residual) - rec.amount_currency
+            )
+            rec.aml_amount_residual_currency = rec.aml_id.amount_residual_currency
+            rec.residual_after_payment_currency = abs(
+                rec.aml_id.amount_residual_currency
+            ) - rec.aml_id.currency_id._convert(
+                rec.amount,
+                rec.payment_id.currency_id,
+                rec.payment_id.company_id,
+                date=rec.payment_id.date,
+            )
 
     partner_id = fields.Many2one("res.partner", string="Partner", ondelete="restrict")
     commercial_partner_id = fields.Many2one(related="partner_id.commercial_partner_id")
@@ -244,14 +291,11 @@ class AccountPaymentCounterLines(models.Model):
                     ("move_id", "=", rec.move_id.id),
                     ("amount_residual", "!=", 0.0),
                 ]
-                if rec.partner_id:
-                    domain.append(("partner_id", "=", rec.partner_id.id))
                 lines_ordered = aml_model.search(
                     domain, order="date_maturity ASC", limit=1
                 )
                 if lines_ordered:
                     rec.aml_id = lines_ordered.id
-            # Case 2: tengo apunte contable y no factura, completar datos
             if rec.aml_id:
                 rec.move_id = rec.aml_id.move_id.id
                 rec.account_id = rec.aml_id.account_id.id

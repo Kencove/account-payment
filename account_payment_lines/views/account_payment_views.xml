@@ -8,6 +8,11 @@
             <tree editable="top">
                 <field name="company_id" invisible="1" />
                 <field name="name" />
+                <field
+                    name="partner_id"
+                    optional="show"
+                    options="{'no_create': True}"
+                />
                 <field name="account_id" options="{'no_create': True}" />
                 <field
                     name="analytic_account_id"
@@ -19,11 +24,6 @@
                     widget="many2many_tags"
                     options="{'no_create': True}"
                     groups="analytic.group_analytic_tags"
-                />
-                <field
-                    name="partner_id"
-                    optional="hide"
-                    options="{'no_create': True}"
                 />
                 <field name="commercial_partner_id" invisible="1" />
                 <field
@@ -44,6 +44,11 @@
                 <field name="aml_date_maturity" optional="hide" />
                 <field name="amount" sum="Total Amount" />
                 <field
+                    name="amount_currency"
+                    groups="base.group_multi_currency"
+                    sum="Total Amount Company Currency"
+                />
+                <field
                     name="aml_amount_residual"
                     attrs="{'column_invisible': [('parent.state', '!=', 'draft')]}"
                     sum="Total Due"
@@ -52,6 +57,18 @@
                     name="residual_after_payment"
                     attrs="{'column_invisible': [('parent.state', '!=', 'draft')]}"
                     sum="Residual"
+                />
+                <field
+                    name="aml_amount_residual_currency"
+                    groups="base.group_multi_currency"
+                    attrs="{'column_invisible': [('parent.state', '!=', 'draft')]}"
+                    sum="Total Due Currency"
+                />
+                <field
+                    name="residual_after_payment_currency"
+                    groups="base.group_multi_currency"
+                    attrs="{'column_invisible': [('parent.state', '!=', 'draft')]}"
+                    sum="Residual Currency"
                 />
             </tree>
         </field>
