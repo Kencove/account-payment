@@ -6,17 +6,35 @@
         <field name="model">account.payment.counterpart.line</field>
         <field name="arch" type="xml">
             <tree editable="top">
+                <field name="company_id" invisible="1" />
                 <field name="name" />
-                <field name="account_id" />
-                <field name="partner_id" optional="hide" />
+                <field name="account_id" options="{'no_create': True}" />
+                <field
+                    name="analytic_account_id"
+                    options="{'no_create': True}"
+                    groups="analytic.group_analytic_accounting"
+                />
+                <field
+                    name="analytic_tag_ids"
+                    widget="many2many_tags"
+                    options="{'no_create': True}"
+                    groups="analytic.group_analytic_tags"
+                />
+                <field
+                    name="partner_id"
+                    optional="hide"
+                    options="{'no_create': True}"
+                />
                 <field name="commercial_partner_id" invisible="1" />
                 <field
                     name="move_id"
+                    options="{'no_create': True}"
                     domain="[('commercial_partner_id', '=', commercial_partner_id), ('payment_state', '!=', 'paid'),
                          ('state', '=', 'posted')]"
                 />
                 <field
                     name="aml_id"
+                    options="{'no_create': True}"
                     domain="[('partner_id', '=', partner_id),
                         ('move_id.state', '=', 'posted'),
                         ('move_id.payment_state', '!=', 'paid'),
