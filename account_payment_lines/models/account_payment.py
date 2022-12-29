@@ -141,9 +141,6 @@ class AccountPayment(models.Model):
                 if self.payment_type == "outbound"
                 else line.amount_currency * -1
             )
-            same_currency = line.payment_id.currency_id.id == (
-                line.aml_id.move_id.currency_id.id or line.move_id.currency_id.id
-            ) or (not line.aml_id and not line.move_id)
             aml_value = line_balance_currency + write_off_balance
             aml_value_currency = line_balance + write_off_amount_currency
             new_aml_lines.append(
@@ -151,9 +148,7 @@ class AccountPayment(models.Model):
                     "name": line.display_name,
                     "debit": aml_value > 0.0 and aml_value or 0.0,
                     "credit": aml_value < 0.0 and -aml_value or 0.0,
-                    "amount_currency": not same_currency
-                    and aml_value
-                    or aml_value_currency,
+                    "amount_currency": aml_value_currency,
                     "date_maturity": self.date,
                     "partner_id": line.partner_id.commercial_partner_id.id,
                     "account_id": line.account_id.id,
