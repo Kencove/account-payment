@@ -91,11 +91,15 @@ class AccountPayment(models.Model):
                 for invoice in pending_invoices:
                     for aml in self._filter_amls(invoice.line_ids):
                         amount_to_apply = 0
+                        amount_residual = rec.company_id.currency_id._convert(
+                            aml.amount_residual,
+                            rec.currency_id,
+                            rec.company_id,
+                            date=rec.date,
+                        )
                         if pending_amount >= 0:
-                            amount_to_apply = min(
-                                abs(aml.amount_residual), pending_amount
-                            )
-                            pending_amount -= abs(aml.amount_residual)
+                            amount_to_apply = min(abs(amount_residual), pending_amount)
+                            pending_amount -= abs(amount_residual)
                         lines_data |= line_model.new(
                             {
                                 "name": "/",
@@ -255,13 +259,8 @@ class AccountPaymentCounterLines(models.Model):
                 abs(rec.aml_id.amount_residual) - rec.amount_currency
             )
             rec.aml_amount_residual_currency = rec.aml_id.amount_residual_currency
-            rec.residual_after_payment_currency = abs(
-                rec.aml_id.amount_residual_currency
-            ) - rec.aml_id.currency_id._convert(
-                rec.amount,
-                rec.payment_id.currency_id,
-                rec.payment_id.company_id,
-                date=rec.payment_id.date,
+            rec.residual_after_payment_currency = (
+                abs(rec.aml_id.amount_residual_currency) - rec.amount_currency
             )
 
     partner_id = fields.Many2one("res.partner", string="Partner", ondelete="restrict")
