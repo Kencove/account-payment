@@ -152,7 +152,7 @@ class AccountPayment(models.Model):
                     or [],
                 }
             )
-        if len(res) >= 2:
+        if len(res) >= 2 and new_aml_lines:
             res.pop(1)
             res += new_aml_lines
         return res
