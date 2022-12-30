@@ -3,6 +3,7 @@
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools import float_is_zero
 
 dict_payment_type = dict(
     inbound=["out_invoice", "out_refund", "out_receipt"],
@@ -64,53 +65,39 @@ class AccountPayment(models.Model):
             and x.amount_residual != 0
         )
 
-    @api.onchange(
-        "payment_type",
-        "partner_type",
-        "partner_id",
-        "amount",
-        "currency_id",
-        "date",
-    )
-    def _onchange_info_lines(self):
-        self.ensure_one()
-        if self.is_internal_transfer:
-            return {}
-        else:
-            move_model = self.env["account.move"]
-            line_model = self.env["account.payment.counterpart.line"]
-            for rec in self:
-                if not rec.partner_id:
-                    continue
-                domain = self._get_moves_domain()
-                pending_invoices = move_model.search(
-                    domain, order="invoice_date_due ASC"
-                )
-                pending_amount = rec.amount
-                lines_data = line_model.browse()
-                for invoice in pending_invoices:
-                    for aml in self._filter_amls(invoice.line_ids):
-                        amount_to_apply = 0
-                        amount_residual = rec.company_id.currency_id._convert(
-                            aml.amount_residual,
-                            rec.currency_id,
-                            rec.company_id,
-                            date=rec.date,
-                        )
-                        if pending_amount >= 0:
-                            amount_to_apply = min(abs(amount_residual), pending_amount)
-                            pending_amount -= abs(amount_residual)
-                        lines_data |= line_model.new(
-                            {
-                                "name": "/",
-                                "move_id": invoice.id,
-                                "aml_id": aml.id,
-                                "account_id": aml.account_id.id,
-                                "partner_id": rec.partner_id.commercial_partner_id.id,
-                                "amount": amount_to_apply,
-                            }
-                        )
-                rec.line_payment_counterpart_ids = lines_data
+    def action_propose_payment_distribution(self):
+        move_model = self.env["account.move"]
+        line_model = self.env["account.payment.counterpart.line"]
+        for rec in self:
+            if self.is_internal_transfer:
+                continue
+            domain = self._get_moves_domain()
+            pending_invoices = move_model.search(domain, order="invoice_date_due ASC")
+            pending_amount = rec.amount
+            rec.line_payment_counterpart_ids.unlink()
+            for invoice in pending_invoices:
+                for aml in self._filter_amls(invoice.line_ids):
+                    amount_to_apply = 0
+                    amount_residual = rec.company_id.currency_id._convert(
+                        aml.amount_residual,
+                        rec.currency_id,
+                        rec.company_id,
+                        date=rec.date,
+                    )
+                    if pending_amount >= 0:
+                        amount_to_apply = min(abs(amount_residual), pending_amount)
+                        pending_amount -= abs(amount_residual)
+                    line_model.create(
+                        {
+                            "payment_id": self.id,
+                            "name": "/",
+                            "move_id": invoice.id,
+                            "aml_id": aml.id,
+                            "account_id": aml.account_id.id,
+                            "partner_id": rec.partner_id.commercial_partner_id.id,
+                            "amount": amount_to_apply,
+                        }
+                    )
 
     def action_delete_counterpart_lines(self):
         if self.line_payment_counterpart_ids and self.state == "draft":
@@ -132,7 +119,11 @@ class AccountPayment(models.Model):
             self.date,
         )
         new_aml_lines = []
-        for line in self.line_payment_counterpart_ids:
+        for line in self.line_payment_counterpart_ids.filtered(
+            lambda x: not float_is_zero(
+                x.amount, precision_digits=self.currency_id.decimal_places
+            )
+        ):
             line_balance = (
                 line.amount if self.payment_type == "outbound" else line.amount * -1
             )
@@ -167,9 +158,9 @@ class AccountPayment(models.Model):
         return res
 
     def action_post(self):
-        for rec in self.filtered(
-            lambda x: x.line_payment_counterpart_ids and not x.move_id.line_ids
-        ):
+        for rec in self.filtered(lambda x: x.line_payment_counterpart_ids):
+            if rec.move_id.line_ids:
+                rec.move_id.line_ids.unlink()
             rec.move_id.line_ids = [
                 (0, 0, line_vals) for line_vals in rec._prepare_move_line_default_vals()
             ]
@@ -250,12 +241,12 @@ class AccountPaymentCounterLines(models.Model):
                 date=rec.payment_id.date,
             )
             rec.aml_amount_residual = rec.aml_id.amount_residual
-            rec.residual_after_payment = (
-                abs(rec.aml_id.amount_residual) - rec.amount_currency
+            rec.residual_after_payment = max(
+                abs(rec.aml_id.amount_residual) - rec.amount_currency, 0
             )
             rec.aml_amount_residual_currency = rec.aml_id.amount_residual_currency
-            rec.residual_after_payment_currency = (
-                abs(rec.aml_id.amount_residual_currency) - rec.amount_currency
+            rec.residual_after_payment_currency = max(
+                abs(rec.aml_id.amount_residual_currency) - rec.amount_currency, 0
             )
 
     partner_id = fields.Many2one("res.partner", string="Partner", ondelete="restrict")
