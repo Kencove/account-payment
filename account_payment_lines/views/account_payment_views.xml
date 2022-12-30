@@ -81,6 +81,13 @@
         <field name="arch" type="xml">
             <xpath expr="//button[@name='action_draft']" position="after">
                 <button
+                    name="action_propose_payment_distribution"
+                    class="btn"
+                    states="draft"
+                    string="Propose Payment Distribution"
+                    type="object"
+                />
+                <button
                     name="action_delete_counterpart_lines"
                     class="btn"
                     states="draft"

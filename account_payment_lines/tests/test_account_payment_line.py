@@ -8,3 +8,12 @@ class TestAccountPaymentLines(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+
+    # TODO: These cases and variants combined
+    # Customer
+    # Customer Refund
+    # Supplier
+    # Supplier Refund
+    # Partial Payments
+    # Multi-Currency
+    # Analytic
