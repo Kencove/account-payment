@@ -63,6 +63,7 @@ class AccountPayment(models.Model):
             lambda x: x.partner_id.commercial_partner_id.id
             == self.partner_id.commercial_partner_id.id
             and x.amount_residual != 0
+            and x.account_id.internal_type in ("receivable", "payable")
         )
 
     def action_propose_payment_distribution(self):
